@@ -7,7 +7,7 @@ A minimal project for fine-tuning a small causal language model (GPT-2) on a cus
 ### 1. Install Dependencies
 
 ```bash
-pip install transformers datasets torch
+pip install transformers datasets torch accelerate
 ```
 
 Or install from `requirements.txt`:
