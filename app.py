@@ -12,7 +12,14 @@ from pathlib import Path
 import subprocess
 
 # Configuration - Use absolute path based on app location
-MODEL_DIR = str(Path(__file__).parent / "artifacts")
+# Handle both local and Streamlit Cloud environments
+try:
+    BASE_DIR = Path(__file__).parent
+except NameError:
+    # Fallback if __file__ is not available
+    BASE_DIR = Path.cwd()
+
+MODEL_DIR = str(BASE_DIR / "artifacts")
 MAX_LENGTH = 100
 TEMPERATURE = 0.7
 TOP_P = 0.9
@@ -27,7 +34,7 @@ def train_model_if_needed():
     
     try:
         # Run the training script as a subprocess
-        script_path = Path(__file__).parent / "src" / "finetune.py"
+        script_path = BASE_DIR / "src" / "finetune.py"
         if not script_path.exists():
             st.error(f"Training script not found at: {script_path}")
             return False
@@ -37,7 +44,7 @@ def train_model_if_needed():
             capture_output=True,
             text=True,
             timeout=600,  # 10 minute timeout
-            cwd=Path(__file__).parent  # Run from app directory
+            cwd=str(BASE_DIR)  # Run from app directory
         )
         
         if result.returncode == 0:
@@ -258,11 +265,7 @@ def main():
     )
 
 
-if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        st.error(f"An error occurred: {str(e)}")
-        st.exception(e)
-        raise
+# Streamlit Cloud runs the script directly
+# Call main() - Streamlit will handle any exceptions and display them
+main()
 
