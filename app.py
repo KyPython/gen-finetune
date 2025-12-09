@@ -120,33 +120,27 @@ def main():
     st.title("🤖 GPT-2 Fine-Tuned Text Generator")
     st.markdown("Generate text using a fine-tuned GPT-2 model")
     
-    # Check if model exists, train if needed
-    model, tokenizer, device = load_model_and_tokenizer()
+    # Initialize session state for model loading
+    if 'model_loaded' not in st.session_state:
+        st.session_state.model_loaded = False
+    if 'model' not in st.session_state:
+        st.session_state.model = None
+    if 'tokenizer' not in st.session_state:
+        st.session_state.tokenizer = None
+    if 'device' not in st.session_state:
+        st.session_state.device = None
     
-    if model is None:
-        st.info("🔄 Model not found. Training model now (this may take a few minutes)...")
-        
-        # Train the model
-        with st.spinner("Training model... This is a one-time setup."):
-            success = train_model_if_needed()
-        
-        if success:
-            st.success("✅ Model trained successfully! Loading now...")
-            # Clear cache to reload
-            load_model_and_tokenizer.clear()
-            model, tokenizer, device = load_model_and_tokenizer()
-            
-            if model is None:
-                st.error("Failed to load model after training. Please refresh the page.")
-                st.stop()
-        else:
-            st.error(
-                "❌ Failed to train model. Please ensure all dependencies are installed.\n\n"
-                "You can also train locally by running: `python src/finetune.py`"
-            )
-            st.stop()
+    # Quick check if model exists (no loading - just check file system)
+    config_path = os.path.join(MODEL_DIR, "config.json")
+    model_exists = os.path.exists(MODEL_DIR) and os.path.exists(config_path)
     
-    st.success(f"✅ Model loaded on device: {device}")
+    # Show status message
+    if st.session_state.model_loaded:
+        st.success(f"✅ Model loaded on device: {st.session_state.device}")
+    elif model_exists:
+        st.info("ℹ️ Model found. Click 'Generate Text' to load and use it.")
+    else:
+        st.info("📝 Model not found. It will be trained automatically when you first generate text (may take a few minutes).")
     
     # Input section
     st.header("Input")
@@ -199,12 +193,45 @@ def main():
         if not prompt.strip():
             st.error("Please enter a prompt.")
         else:
+            # Load or train model if not already loaded (lazy loading)
+            if not st.session_state.model_loaded:
+                config_path = os.path.join(MODEL_DIR, "config.json")
+                model_exists = os.path.exists(MODEL_DIR) and os.path.exists(config_path)
+                
+                if not model_exists:
+                    # Train the model
+                    with st.spinner("Training model... This is a one-time setup (may take a few minutes)."):
+                        success = train_model_if_needed()
+                    
+                    if not success:
+                        st.error(
+                            "❌ Failed to train model. Please ensure all dependencies are installed.\n\n"
+                            "You can also train locally by running: `python src/finetune.py`"
+                        )
+                        st.stop()
+                    
+                    # Clear cache to reload after training
+                    load_model_and_tokenizer.clear()
+                
+                # Load the model (either newly trained or existing)
+                with st.spinner("Loading model..."):
+                    model, tokenizer, device = load_model_and_tokenizer()
+                    if model is None:
+                        st.error("Failed to load model. Please refresh the page.")
+                        st.stop()
+                    
+                    st.session_state.model = model
+                    st.session_state.tokenizer = tokenizer
+                    st.session_state.device = device
+                    st.session_state.model_loaded = True
+            
+            # Generate text (model is now guaranteed to be loaded)
             with st.spinner("Generating text..."):
                 try:
                     generated = generate_text(
-                        model,
-                        tokenizer,
-                        device,
+                        st.session_state.model,
+                        st.session_state.tokenizer,
+                        st.session_state.device,
                         prompt,
                         max_length,
                         temperature,
