@@ -164,7 +164,7 @@ def main():
     st.markdown("---")
     st.markdown(
         "**About:** This app uses a fine-tuned GPT-2 model. "
-        "See the [GitHub repository](https://github.com/YOUR_USERNAME/gen-finetune) for more details."
+        "See the [GitHub repository](https://github.com/KyPython/gen-finetune) for more details."
     )
 
 
