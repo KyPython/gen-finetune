@@ -11,12 +11,6 @@ import sys
 from pathlib import Path
 import subprocess
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
-
-from transformers import AutoTokenizer, AutoModelForCausalLM
-import torch
-
 # Configuration - Use absolute path based on app location
 MODEL_DIR = str(Path(__file__).parent / "artifacts")
 MAX_LENGTH = 100
@@ -70,6 +64,10 @@ def train_model_if_needed():
 @st.cache_resource
 def load_model_and_tokenizer():
     """Load the fine-tuned model and tokenizer (cached)."""
+    # Lazy import to avoid startup delays
+    from transformers import AutoTokenizer, AutoModelForCausalLM
+    import torch
+    
     # Check if model exists
     config_path = os.path.join(MODEL_DIR, "config.json")
     if not os.path.exists(MODEL_DIR):
@@ -93,6 +91,8 @@ def load_model_and_tokenizer():
 
 def generate_text(model, tokenizer, device, prompt, max_length, temperature, top_p, do_sample):
     """Generate text from a prompt."""
+    import torch
+    
     inputs = tokenizer(prompt, return_tensors="pt")
     input_ids = inputs["input_ids"].to(device)
     
@@ -259,5 +259,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        st.error(f"An error occurred: {str(e)}")
+        st.exception(e)
+        raise
 
