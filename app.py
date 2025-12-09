@@ -9,6 +9,7 @@ import streamlit as st
 import os
 import sys
 from pathlib import Path
+import subprocess
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
@@ -16,18 +17,64 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 
-# Configuration
-MODEL_DIR = "./artifacts"
+# Configuration - Use absolute path based on app location
+MODEL_DIR = str(Path(__file__).parent / "artifacts")
 MAX_LENGTH = 100
 TEMPERATURE = 0.7
 TOP_P = 0.9
 DO_SAMPLE = True
 
 
+def train_model_if_needed():
+    """Train the model if it doesn't exist."""
+    config_path = os.path.join(MODEL_DIR, "config.json")
+    if os.path.exists(MODEL_DIR) and os.path.exists(config_path):
+        return True  # Model already exists
+    
+    try:
+        # Run the training script as a subprocess
+        script_path = Path(__file__).parent / "src" / "finetune.py"
+        if not script_path.exists():
+            st.error(f"Training script not found at: {script_path}")
+            return False
+            
+        result = subprocess.run(
+            [sys.executable, str(script_path)],
+            capture_output=True,
+            text=True,
+            timeout=600,  # 10 minute timeout
+            cwd=Path(__file__).parent  # Run from app directory
+        )
+        
+        if result.returncode == 0:
+            # Verify model was created
+            if os.path.exists(MODEL_DIR) and os.path.exists(config_path):
+                return True
+            else:
+                st.error(f"Training completed but model not found at {MODEL_DIR}")
+                return False
+        else:
+            st.error(f"Training failed: {result.stderr}")
+            if result.stdout:
+                st.text("Training output:")
+                st.text(result.stdout)
+            return False
+    except subprocess.TimeoutExpired:
+        st.error("Training timed out. Please train the model locally first.")
+        return False
+    except Exception as e:
+        st.error(f"Error training model: {e}")
+        return False
+
+
 @st.cache_resource
 def load_model_and_tokenizer():
     """Load the fine-tuned model and tokenizer (cached)."""
+    # Check if model exists
+    config_path = os.path.join(MODEL_DIR, "config.json")
     if not os.path.exists(MODEL_DIR):
+        return None, None, None
+    if not os.path.exists(config_path):
         return None, None, None
     
     try:
@@ -73,15 +120,31 @@ def main():
     st.title("🤖 GPT-2 Fine-Tuned Text Generator")
     st.markdown("Generate text using a fine-tuned GPT-2 model")
     
-    # Load model
+    # Check if model exists, train if needed
     model, tokenizer, device = load_model_and_tokenizer()
     
     if model is None:
-        st.warning(
-            "⚠️ Model not found. Please run `python src/finetune.py` first to train the model.\n\n"
-            "The model will be saved to `./artifacts/` directory."
-        )
-        st.stop()
+        st.info("🔄 Model not found. Training model now (this may take a few minutes)...")
+        
+        # Train the model
+        with st.spinner("Training model... This is a one-time setup."):
+            success = train_model_if_needed()
+        
+        if success:
+            st.success("✅ Model trained successfully! Loading now...")
+            # Clear cache to reload
+            load_model_and_tokenizer.clear()
+            model, tokenizer, device = load_model_and_tokenizer()
+            
+            if model is None:
+                st.error("Failed to load model after training. Please refresh the page.")
+                st.stop()
+        else:
+            st.error(
+                "❌ Failed to train model. Please ensure all dependencies are installed.\n\n"
+                "You can also train locally by running: `python src/finetune.py`"
+            )
+            st.stop()
     
     st.success(f"✅ Model loaded on device: {device}")
     
