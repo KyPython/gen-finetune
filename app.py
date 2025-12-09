@@ -43,7 +43,7 @@ def train_model_if_needed():
             [sys.executable, str(script_path)],
             capture_output=True,
             text=True,
-            timeout=600,  # 10 minute timeout
+            timeout=300,  # 5 minute timeout (reduced, but should be enough with optimized training)
             cwd=str(BASE_DIR)  # Run from app directory
         )
         

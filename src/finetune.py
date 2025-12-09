@@ -20,8 +20,8 @@ import torch
 # Configuration
 MODEL_NAME = "gpt2"  # Change to "gpt2-medium", "gpt2-large", etc. for larger models
 OUTPUT_DIR = "./artifacts"
-MAX_STEPS = 50  # Small number for quick CPU training; increase for better results
-BATCH_SIZE = 2  # Small batch size for CPU; increase if using GPU
+MAX_STEPS = 10  # Very small number for quick training on Streamlit Cloud; increase for better results
+BATCH_SIZE = 1  # Minimal batch size for fastest training
 LEARNING_RATE = 5e-5
 
 
@@ -60,7 +60,7 @@ def tokenize_dataset(dataset, tokenizer):
         tokenized = tokenizer(
             examples["text"],
             truncation=True,
-            max_length=128,  # Adjust based on your data
+            max_length=64,  # Reduced for faster processing
             padding="max_length",
         )
         tokenized["labels"] = tokenized["input_ids"].copy()
@@ -101,7 +101,7 @@ def main():
         mlm=False,  # Causal LM, not masked LM
     )
     
-    # Training arguments
+    # Training arguments - optimized for speed on Streamlit Cloud
     training_args = TrainingArguments(
         output_dir=OUTPUT_DIR,
         overwrite_output_dir=True,
@@ -109,14 +109,14 @@ def main():
         max_steps=MAX_STEPS,  # Quick training for CPU
         per_device_train_batch_size=BATCH_SIZE,
         learning_rate=LEARNING_RATE,
-        logging_steps=10,
-        save_steps=25,
-        save_total_limit=2,
+        logging_steps=5,  # More frequent logging for visibility
+        save_steps=MAX_STEPS,  # Save at the end
+        save_total_limit=1,  # Keep only 1 checkpoint
         prediction_loss_only=True,
         remove_unused_columns=False,
-        # For GPU training, uncomment and configure:
-        # fp16=True,  # Enable mixed precision training
-        # dataloader_num_workers=4,  # Parallel data loading
+        disable_tqdm=False,  # Show progress
+        report_to="none",  # Disable wandb/tensorboard logging for speed
+        dataloader_num_workers=0,  # Disable multiprocessing for simplicity
     )
     
     # Initialize trainer
