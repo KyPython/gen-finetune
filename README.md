@@ -119,6 +119,44 @@ accelerate launch src/finetune.py
 
 Or use Ray for distributed training (see Hugging Face Transformers documentation).
 
+## Web Deployment
+
+### Streamlit Web App
+
+A simple web interface is included for public deployment.
+
+#### Local Testing
+
+```bash
+# Install Streamlit
+pip install streamlit
+
+# Run the app
+streamlit run app.py
+```
+
+#### Deploy to Streamlit Cloud (Free)
+
+1. Push your code to GitHub (already done if you cloned this repo)
+2. Go to [share.streamlit.io](https://share.streamlit.io)
+3. Sign in with GitHub
+4. Click "New app"
+5. Select your repository: `KyPython/gen-finetune`
+6. Set Main file path: `app.py`
+7. Click "Deploy"
+
+**Note**: For Streamlit Cloud, you'll need to:
+- Train the model locally and commit the `artifacts/` folder, OR
+- Add a step in the app to download/train the model on first run
+- Update the GitHub URL in `app.py` (line with `YOUR_USERNAME`)
+
+#### Alternative Deployment Options
+
+- **Heroku**: Use `Procfile` with `web: streamlit run app.py --server.port=$PORT --server.address=0.0.0.0`
+- **Railway**: Similar to Heroku, supports Python apps
+- **Hugging Face Spaces**: Upload as a Streamlit Space
+- **Docker**: Containerize the app for any cloud provider
+
 ## Project Structure
 
 ```
@@ -126,9 +164,13 @@ Or use Ray for distributed training (see Hugging Face Transformers documentation
 ├── src/
 │   ├── finetune.py    # Fine-tuning script
 │   └── infer.py       # Inference script
+├── app.py             # Streamlit web app
 ├── artifacts/         # Saved model and tokenizer (created after training)
+├── requirements.txt
+├── streamlit_requirements.txt
 ├── README.md
-└── requirements.txt
+└── .streamlit/
+    └── config.toml    # Streamlit configuration
 ```
 
 ## Notes
@@ -137,4 +179,5 @@ Or use Ray for distributed training (see Hugging Face Transformers documentation
 - Training loss is logged every 10 steps
 - The model is saved to `./artifacts` after training
 - For production use, increase training steps and use a larger, more diverse dataset
+- The web app requires the model to be trained first (run `python src/finetune.py`)
 
